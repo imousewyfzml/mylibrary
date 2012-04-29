@@ -1,4 +1,7 @@
 mylibrary
 =========
 
-书籍/配置文件等的备份
+# 系统配置文件
+/etc/make.conf --gentoo的make配置文件
+
+

@@ -15,6 +15,7 @@
 
 #define DEFAULT_PORT 5050
 #define MAX_EVENTS   10
+#define MAX_FDS      10
 
 static int do_it(int sSocket);
 
@@ -52,7 +53,7 @@ int main(int argc, char** argv)
     
 
     /* USE epoll  */
-    epollfd = epoll_create(10);
+    epollfd = epoll_create(MAX_FDS);
     if (epollfd == -1)
     {
         perror("epoll_create");
@@ -81,12 +82,12 @@ int main(int argc, char** argv)
     
             if (events[n].data.fd = sSocket)
             {
-		if (do_it(sSocket) != 0)
+		        if (do_it(sSocket) != 0)
                 {
                     break;
                 }
             }
-	}
+	    }
     }
 
     close(sSocket);
@@ -117,6 +118,7 @@ int do_it(int sSocket)
         printf("recvfrom(): [%s]\n", recv_buf);
         printf("recvfrom() client IP: [%s]\n", inet_ntoa(cli.sin_addr));
         printf("recvfrom() client PORT: [%d]\n", ntohs(cli.sin_port));
+        /* replay*/
     }
         
     sSend = sendto(sSocket, send_buf, sizeof(send_buf), 0, (struct sockaddr*)&cli, sizeof(cli));

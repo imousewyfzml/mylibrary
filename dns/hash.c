@@ -6,12 +6,6 @@
 
 #define HASH_LIMIT 0.5
 
-typedef struct hash_node_t {
-  int data;                           /* data in hash node */
-  const char * key;                   /* key for hash lookup */
-  struct hash_node_t *next;           /* next node in hash chain */
-} hash_node_t;
-
 /*
  *  hash() - hash算法函数
  *
@@ -20,19 +14,16 @@ typedef struct hash_node_t {
  */
 static int hash(const hash_t *tptr, const char *key) 
 {
-  int i=0;
-  int hashvalue;
- 
-  while (*key != '\0')
-    i=(i<<3)+(*key++ - '0');
- 
-  hashvalue = (((i*1103515249)>>tptr->downshift) & tptr->mask);
-  if (hashvalue < 0) 
-  {
-    hashvalue = 0;
-  }    
+    unsigned int hash = 0;  
+   
+    while (*key)  
+    {   
+		//hash<<5-hash: hash*31; The seed can be: 31, 131, 1313 etc...
+        hash = ((hash << 5) - hash) + (*key++);  
+    }  
+   
+    return (hash & tptr->size);  
 
-  return hashvalue;
 }
 
 /*
@@ -51,14 +42,10 @@ void hash_init(hash_t *tptr, int buckets)
   /* 初始化 */
   tptr->entries=0;
   tptr->size=2;
-  tptr->mask=1;
-  tptr->downshift=29;
 
   /* 确认桶的个数是2的n次方 */
-  while (tptr->size<buckets) {
+  while (tptr->size < buckets) {
     tptr->size<<=1;
-    tptr->mask=(tptr->mask<<1)+1;
-    tptr->downshift--;
   } /* while */
 
   tptr->bucket=(hash_node_t **) calloc(tptr->size, sizeof(hash_node_t *));
@@ -111,7 +98,9 @@ int hash_insert(hash_t *tptr, const char *key, int data)
   h=hash(tptr, key);
   node=(struct hash_node_t *) malloc(sizeof(hash_node_t));
   node->data=data;
-  node->key=key;
+  node->key=(char*)malloc(strlen(key)+1);
+  strcpy(node->key, key);
+  node->key[strlen(key)] = '\0';
   node->next=tptr->bucket[h];
   tptr->bucket[h]=node;
   tptr->entries++;
@@ -136,6 +125,7 @@ void hash_destroy(hash_t *tptr)
     { 
       last = node;   
       node = node->next;
+      free(last->key);
       free(last);
     }
   }     

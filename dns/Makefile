@@ -4,7 +4,7 @@ LD=ld
 PROGRAM=simpledns
 
 dns: dns.o hash.o
-	$(CC) dns.o -o $(PROGRAM)
+	$(CC) dns.o hash.o -o $(PROGRAM)
 
 dns.o: dns.c 
 	$(CC) -c dns.c -o dns.o

@@ -1,13 +1,17 @@
 #ifndef HASH_H
 #define HASH_H
 
+typedef struct hash_node_t {
+  int data;                           /* data in hash node */
+  char * key;                   /* key for hash lookup */
+  struct hash_node_t *next;           /* next node in hash chain */
+} hash_node_t;
+
 typedef struct hash_t 
 {
-  struct hash_node_t **bucket;        /* array of hash nodes */
-  int size;                           /* size of the array */
-  int entries;                        /* number of entries in table */
-  int downshift;                      /* shift cound, used in hash function */
-  int mask;                           /* used to select bits for hashing */
+  struct hash_node_t **bucket;        /* hash桶节点 */
+  int size;                           /* 桶个数 */
+  int entries;                        /* 数据总的个数 */
 } hash_t;
 
 #define HASH_FAIL -1
@@ -22,11 +26,8 @@ int hash_lookup (const hash_t *, const char *);
 
 int hash_insert (hash_t *, const char *, int);
 
-int hash_delete (hash_t *, const char *);
-
 void hash_destroy(hash_t *);
 
-char *hash_stats (hash_t *);
 
 #ifdef __cplusplus
 }

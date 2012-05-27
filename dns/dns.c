@@ -37,7 +37,7 @@ static struct query_seg *construct_query_seg(const unsigned int nlen);
 static void destroy_query_seg(struct query_seg *qr);
 static unsigned int get_dotname_len(const char *buf);
 static int get_query_name(const char *buf, char *pname);
-static unsigned int get_next_query_seg(const char *buf, struct query_seg *pqs);
+static unsigned int get_next_query_seg(const char *buf, struct query_seg **pqs);
 
 static int socket_init(void);
 static int init_db(void);
@@ -143,8 +143,8 @@ static int init_db()
 	FILE* fp = NULL;
 	char acCmd[LINE_MAXLEN] = {0};
 	char *p;
-	char acName[DOMAIN_MAXLEN];
-	char acIP[IP_MAXLEN];
+	char acName[DOMAIN_MAXLEN] = {0};
+	char acIP[IP_MAXLEN] = {0};
 	struct in_addr strIPAddr;
 
     hash_init(&g_ht, HASH_SIZE);
@@ -163,7 +163,7 @@ static int init_db()
 		}
 
         /* 不支持别名 */
-		sscanf(p, "%s %s", acIP, acName);
+		sscanf(p, "%s%s", acIP, acName);
 
 		if ((IsNameValid(acName)) && (0 != inet_aton(acIP, &strIPAddr)))
 		{
@@ -207,7 +207,7 @@ static int do_it(int sSocket)
         printf("recvfrom() client IP: [%s]\n", inet_ntoa(cli.sin_addr));
         printf("recvfrom() client PORT: [%d]\n", ntohs(cli.sin_port));
         /* replay*/
-        process_std_query(recv_buf,sRecv, send_buf, &sendlen);
+        process_std_query(recv_buf, sRecv, send_buf, &sendlen);
     }
         
     sSend = sendto(sSocket, send_buf, sendlen, 0, (struct sockaddr*)&cli, sizeof(cli));
@@ -247,10 +247,10 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
         return -1;
     }
 
-    if (h->questions == 0 || 
-        h->answer_rrs != 0 ||
-        h->authority_rrs != 0 ||
-        h->additional_rrs != 0)
+    if (ntohs(h->questions) == 0 || 
+        ntohs(h->answer_rrs) != 0 ||
+        ntohs(h->authority_rrs) != 0 ||
+        ntohs(h->additional_rrs) != 0)
     {
         return -1;
     }
@@ -261,15 +261,17 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
 
     /* 复制请求信息 */
     memcpy(send_buf, recv_buf, len);
+    sh->flags = ntohs(sh->flags);
     SET_OP_TYPE(sh->flags, RESPONSE); /* 修改为响应消息 */
     SET_OP_CODE(sh->flags, OPCODE_STD_QUERY);
+    sh->flags = htons(sh->flags);
 
     /* 根据answer中的name查询IP地址  */
-    for (n = 0; n < h->questions; n++)
+    for (n = 0; n < ntohs(h->questions); n++)
     {
-        rlen = get_next_query_seg(querys,pqs);
+        rlen = get_next_query_seg(querys,&pqs);
         totallen += rlen;
-        if (rlen > len || rlen == 0)
+        if (rlen > len-sizeof(struct dnshead) || rlen == 0)
         {
             destroy_query_seg(pqs);
             return -1;
@@ -290,25 +292,24 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
             continue;
         }
 
+        printf("find data = %d\n, sizeof(data) = %d\n",data, sizeof(unsigned long));
+
         sh->answer_rrs += 1; /* answer 数量增加*/
         /* 拷贝query中名称, 类型, class */
         memcpy(answer, querys, rlen);
-        *(unsigned long*)(answer+rlen) = 1800; /* tty */
-        *(unsigned short*)(answer+rlen+sizeof(unsigned long)) = sizeof(data);
-        *(unsigned long*)(answer+rlen+sizeof(unsigned long)+sizeof(unsigned short)) = data;
+        *(unsigned long*)(answer+rlen) = htonl(1800); /* tty */
+        *(unsigned short*)(answer+rlen+sizeof(data)) = htons(sizeof(data));
+        *(unsigned long*)(answer+rlen+sizeof(data)+sizeof(unsigned short)) = (data);
 
         /* 递增answer,query指针 */
         querys += rlen;
-        answer += rlen + 2*sizeof(unsigned long) + sizeof(unsigned short);
+        answer += rlen + 2*sizeof(data) + sizeof(unsigned short);
 
         *(plen) = answer - send_buf;
 
         destroy_query_seg(pqs);
-        if (totallen >= len)
-        {
-            break;
-        }
     }
+    sh->answer_rrs = htons(sh->answer_rrs);     
     
 }
 
@@ -318,11 +319,12 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
  * RET char* buf中下一个answer的开始
  * */
 
-static unsigned int get_next_query_seg(const char *buf, struct query_seg *pqs)
+static unsigned int get_next_query_seg(const char *buf, struct query_seg **ppqs)
 {
     const char *tmp = buf;
     unsigned int pos = 0;
     unsigned int nlen = 0;
+    struct query_seg *pqs = NULL;
         
     nlen = get_dotname_len(buf);
     if (nlen == 0)
@@ -343,8 +345,10 @@ static unsigned int get_next_query_seg(const char *buf, struct query_seg *pqs)
         return 0;
     }
 
-    pqs->type = *(unsigned short*)(tmp + strlen(buf)+1);
-    pqs->class = *(unsigned short*)(tmp + strlen(buf)+1+sizeof(unsigned short));
+    pqs->type = ntohs(*(unsigned short*)(tmp + strlen(buf)+1));
+    pqs->class = ntohs(*(unsigned short*)(tmp + strlen(buf)+1+sizeof(unsigned short)));
+
+    *ppqs = pqs;
     return strlen(buf)+1+2*sizeof(unsigned short);
 
 }
@@ -389,17 +393,17 @@ static unsigned int get_dotname_len(const char *buf)
 /* answer中提取name */
 static int get_query_name(const char *buf, char *pname)
 {
-    char ch = *buf;
-    char tmp = '\0';
-    unsigned int offset = 0;
+    char offset = *buf;
+    char tmp;
 
     strcpy(pname, buf+1);
-    while(ch)
+    while(offset <= strlen(pname))
     {
-        offset += ch;
-        tmp = *(pname+offset+1);
-        *(pname+offset+1) = '.';
-        ch = tmp;
+        tmp += pname[offset] + 1;
+        if (pname[offset] == '\0')
+            break;
+        pname[offset] = '.';        
+        offset += tmp;
     }
 }
 
@@ -409,18 +413,25 @@ static int get_query_name(const char *buf, char *pname)
 static int IsNameValid(const char *name)
 {
 	char *c = name;
-    char ch;
 
-	for (; c != '\0'; c++)
+    if (!name)
+        return FALSE;
+
+    if (strlen(name) == 0)
+        return FALSE;
+
+    do
 	{
-        ch = *c;
-		if ((ch>='a' && ch<='z') || (ch>='A' && ch<='Z') ||
-			(ch>='0' && ch<='9') || (ch == '.') || (ch == '-'))
+		if ((*c>='a' && *c<='z') || (*c >= 'A' && *c <= 'Z') ||
+			(*c>='0' && *c<='9') || (*c == '.') || (*c == '-'))
+        {
+            c++;
 			continue;
+        }
 		else
 			return FALSE;
 			
-	}
+	}while(*c != '\0');
 	
 	return TRUE;
 }

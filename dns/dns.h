@@ -17,13 +17,13 @@ struct dnshead
 #define QUERY    0
 #define RESPONSE 1
 #define GET_OP_TYPE(flags) (flags>>15)
-#define SET_OP_TYPE(flags, bit)   (flags | bit<<15)
+#define SET_OP_TYPE(flags, bit)   (flags |= bit<<15)
 /* .XXX X... .... .... */
 #define OPCODE_STD_QUERY 0 /* 标准查询 */
                            /* 反向查询 */
                            /* 服务器状态查询 */
 #define GET_OP_CODE(flags) ((flags & 0x7800)>>11)
-#define SET_OP_CODE(flags, code) (flags | (code<<11))
+#define SET_OP_CODE(flags, code) (flags |= (code<<11))
 /* .... .X.. .... .... */
 #define ANTH_ANSWER
 /* .... ..X. .... .... */ 

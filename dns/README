@@ -1,0 +1,9 @@
+1. simpledns 监听的53端口,需要root权限
+
+2. 测试可使用dig工具
+   dig @127.0.0.1 localhost
+向服务器127.0.0.1进行标准询问localhost的主机地址
+
+3. /etc/hosts中必须是域名与IP成对出现,不支持多地址或别名
+
+4. 参见抓包dns.pcap

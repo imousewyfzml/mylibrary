@@ -12,11 +12,10 @@
 #include <arpa/inet.h>
 #include <sys/epoll.h>
 #include "dns.h"
-#include "buffer.h"
 #include "hash.h"
 
 /* defines */
-#define DEFAULT_PORT 53
+#define DEFAULT_PORT 6060
 #define MAX_EVENTS   10
 #define MAX_FDS      10
 #define HASH_SIZE    1024
@@ -53,8 +52,6 @@ int main(int argc, char** argv)
     int epollfd;
     int nfds;
     int n;
-    int i;
-    
     
     printf("Server waiting...\n");
 
@@ -94,7 +91,7 @@ int main(int argc, char** argv)
         for (n = 0; n < nfds; ++n)
         {
     
-            if (events[n].data.fd = sSocket)
+            if (events[n].data.fd == sSocket)
             {
 		        if (do_it(sSocket) != 0)
                 {
@@ -141,7 +138,6 @@ static int init_db()
 {
     /* 从/etc/host读取数据并放入到hash中 */
 	FILE* fp = NULL;
-	char acCmd[LINE_MAXLEN] = {0};
 	char *p;
 	char acName[DOMAIN_MAXLEN] = {0};
 	char acIP[IP_MAXLEN] = {0};
@@ -178,6 +174,7 @@ static int init_db()
 	}	
 
 	fclose(fp);
+    return 0;
 
 }
 
@@ -213,7 +210,7 @@ static int do_it(int sSocket)
     sSend = sendto(sSocket, send_buf, sendlen, 0, (struct sockaddr*)&cli, sizeof(cli));
     if((sSend < 0)||(sSend == 0))
     {
-        perror("perror");
+        perror("sendto");
         return -1;
     }
     printf("sendto() Succeeded!\n");
@@ -226,7 +223,6 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
 {
     struct dnshead *h = (struct dnshead *)recv_buf;
     struct dnshead *sh = (struct dnshead *)send_buf;
-    char *name = NULL;
     char *querys= (char*)(recv_buf + sizeof(struct dnshead));
     char *answer= (char*)(send_buf + len);
     struct query_seg *pqs = NULL;
@@ -292,7 +288,7 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
             continue;
         }
 
-        printf("find data = %d\n, sizeof(data) = %d\n",data, sizeof(unsigned long));
+        printf("find data = %d, sizeof(data) = %d\n",data, sizeof(unsigned long));
 
         sh->answer_rrs += 1; /* answer 数量增加*/
         /* 拷贝query中名称, 类型, class */
@@ -305,12 +301,14 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
         querys += rlen;
         answer += rlen + 2*sizeof(data) + sizeof(unsigned short);
 
-        *(plen) = answer - send_buf;
 
         destroy_query_seg(pqs);
     }
+
+    *(plen) = answer - send_buf;
     sh->answer_rrs = htons(sh->answer_rrs);     
     
+    return 0;
 }
 
 /* 从buffer中生成query_seg 
@@ -322,7 +320,6 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
 static unsigned int get_next_query_seg(const char *buf, struct query_seg **ppqs)
 {
     const char *tmp = buf;
-    unsigned int pos = 0;
     unsigned int nlen = 0;
     struct query_seg *pqs = NULL;
         
@@ -393,8 +390,8 @@ static unsigned int get_dotname_len(const char *buf)
 /* answer中提取name */
 static int get_query_name(const char *buf, char *pname)
 {
-    char offset = *buf;
-    char tmp;
+    unsigned int offset = (unsigned int)*buf;
+    unsigned int tmp = 0;
 
     strcpy(pname, buf+1);
     while(offset <= strlen(pname))
@@ -405,6 +402,7 @@ static int get_query_name(const char *buf, char *pname)
         pname[offset] = '.';        
         offset += tmp;
     }
+    return 0;
 }
 
 
@@ -412,7 +410,7 @@ static int get_query_name(const char *buf, char *pname)
     a--z, A--Z, 0--9, . */
 static int IsNameValid(const char *name)
 {
-	char *c = name;
+	char *c = (char*)name;
 
     if (!name)
         return FALSE;

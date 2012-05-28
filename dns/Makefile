@@ -1,6 +1,6 @@
 CC=gcc
 LD=ld
-CFLAGS=-ggdb
+CFLAGS=-ggdb -Wall
 
 PROGRAM=simpledns
 

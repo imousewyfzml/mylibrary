@@ -1,55 +1,146 @@
-1(require 'cedet)
+;; common setting
+(add-to-list 'load-path "~/.emacs.d/plugin")
+;; load common setting
+(load-file "~/.emacs.d/commsetting.el")
 
-;; 关闭开机画面
-(setq inhibit-startup-message t)
-;; 关掉出错的提示声音
-(setq visible-bell t)
-;; 显示列号
-(setq column-number-mode t)
-;; 设置kill ring
-(setq kill-ring-max 200)
-;; 列最长80
-(setq default-fill-column 80)
-;; 不用TAB字符来indent
-(setq-default indent-tabs-mode nil)
-(setq default-tab-width 8)
-(setq tab-stop-list ())
-;(loop for x downfrom 40 to 1 do
-;      (setq tab-stop-list (cons (* x 4) tab-stop-list)))
-;; sentence-end 识别中文标点
-(setq sentence-end "\\([。！？]\\|……\\|[.?!][]\"')}]*\\($\\|[ \t]\\)\\)[ \t\n]*")
-(setq sentence-end-double-space nil)
-;; major mode 设置为 text-mod1e
-(setq default-major-mode 'text-mode)
-;;括号匹配时显示另外一边的括号，而不是烦人的跳到另一个括号
-(show-paren-mode t)
-(setq show-paren-style 'parentheses)
-;; 在标题栏中显示buffer的名字
-(setq frame-title-format "emacs@%b")
-;; 直接显示图片
-(auto-image-file-mode)
-;; 语法加亮
-(global-font-lock-mode t)
-;; 备份版本控制
-(setq version-control t)
-(setq kept-new-versions 3)
-(setq delete-old-versions t)
-(setq kept-old-versions 2)
-(setq dired-kept-versions 1)
-;; 让 dired 可以递归的拷贝和删除目录
-(setq dired-recursive-copies 'top)
-(setq dired-recursive-deletes 'top)
-;; 一个简单的办法设置 auto-mode-alist, 免得写很多 add-to-list.
-(mapcar
- (function (lambda (setting)
-	     (setq auto-mode-alist
-		   (cons setting auto-mode-alist))))
- '(("\\.xml$".  sgml-mode)
-   ("\\\.bash" . sh-mode)
-   ("\\.rdf$".  sgml-mode)
-   ("\\.session" . emacs-lisp-mode)
-   ("\\.l$" . c-mode)
-   ("\\.css$" . css-mode)
-   ("\\.cfm$" . html-mode)
-   ("gnus" . emacs-lisp-mode)
-   ("\\.idl$" . idl-mode)))
+
+;; color theme
+(require 'color-theme)
+(color-theme-initialize)
+(color-theme-robin-hood)
+
+;; auto-complete
+(require 'auto-complete-config)
+(ac-config-default)
+
+;; yasnippet
+(require 'yasnippet)
+
+;; speedbar
+(require 'speedbar)
+
+;; ede
+(require 'ede)
+(global-ede-mode t)
+
+;;cedet
+(require 'cedet)
+(require 'semantic)
+;; semantic 主要特性
+(setq semantic-default-submodes '(global-semantic-idle-scheduler-mode
+                                  global-semanticdb-minor-mode
+                                  global-semantic-idle-summary-mode
+                                  global-semantic-mru-bookmark-mode))
+(semantic-mode 1)
+(global-semantic-highlight-edits-mode (if window-system 1 -1))
+(global-semantic-show-unmatched-syntax-mode 1)
+(global-semantic-show-parser-state-mode 1)
+;; Semantic/ia
+(require 'semantic/ia)
+(setq-mode-local c-mode semanticdb-find-default-throttle
+                 '(project unloaded system recursive))
+(setq-mode-local c++-mode semanticdb-find-default-throttle
+                 '(project unloaded system recursive))
+
+;; 头文件的具体位置
+;; (setq semanticdb-project-roots (list (expand-file-name "/")))
+(require 'semantic/bovine/gcc)
+(require 'semantic/bovine/c)
+(defconst cedet-user-include-dirs
+  (list ".." "../include" "../inc" "../common" "../public"
+        "../.." "../../include" "../../inc" "../../common" "../../public"))
+(defconst cedet-win32-include-dirs
+  (list "C:/MinGW/include"
+        "C:/MinGW/include/c++/3.4.5"
+        "C:/MinGW/include/c++/3.4.5/mingw32"
+        "C:/MinGW/include/c++/3.4.5/backward"
+        "C:/MinGW/lib/gcc/mingw32/3.4.5/include"
+        "C:/Program Files/Microsoft Visual Studio/VC98/MFC/Include"))
+(require 'semantic-c nil 'noerror)
+(let ((include-dirs cedet-user-include-dirs))
+  (when (eq system-type 'windows-nt)
+    (setq include-dirs (append include-dirs cedet-win32-include-dirs)))
+  (mapc (lambda (dir)
+          (semantic-add-system-include dir 'c++-mode)
+          (semantic-add-system-include dir 'c-mode))
+        include-dirs))
+(setq semantic-c-dependency-system-include-path "/usr/include/")
+;; 菜单中显示
+(defun my-semantic-hook ()
+  (imenu-add-to-menubar "TAGS"))
+(add-hook 'semantic-init-hooks 'my-semantic-hook)
+;; 代码条转 semantic-ia-fast-jump
+(require 'semantic/analyze/refs)
+;; 找到函数定义的地方
+;; 跳过去F12
+(defadvice push-mark (around semantic-mru-bookmark activate)
+  "Push a mark at LOCATION with NOMSG and ACTIVATE passed to `push-mark'.
+If `semantic-mru-bookmark-mode' is active, also push a tag onto
+the mru bookmark stack."
+  (semantic-mrub-push semantic-mru-bookmark-ring
+                      (point)
+                      'mark)
+  ad-do-it)
+;; 跳转回来
+(defun semantic-ia-fast-jump-back ()
+  (interactive)
+  (if (ring-empty-p (oref semantic-mru-bookmark-ring ring))
+      (error "Semantic Bookmark ring is currently empty"))
+  (let* ((ring (oref semantic-mru-bookmark-ring ring))
+         (alist (semantic-mrub-ring-to-assoc-list ring))
+         (first (cdr (car alist))))
+    (if (semantic-equivalent-tag-p (oref first tag) (semantic-current-tag))
+        (setq first (cdr (car (cdr alist)))))
+    (semantic-mrub-switch-tags first)))
+(defun semantic-ia-fast-jump-or-back (&optional back)
+  (interactive "P")
+  (if back
+      (semantic-ia-fast-jump-back)
+    (semantic-ia-fast-jump (point))))
+;; f12跳转，C-F12
+(define-key semantic-mode-map [f12] 'semantic-ia-fast-jump-or-back)
+(define-key semantic-mode-map [C-f12] 'semantic-ia-fast-jump-or-back)
+(define-key semantic-mode-map [S-f12] 'semantic-ia-fast-jump-back)
+;;;; C-mode-hooks .
+;; c++ . -> complete
+(defun yyc/c-mode-keys ()
+  "description"
+  ;; Semantic functions.
+  (semantic-default-c-setup)
+  (local-set-key "\C-c?" 'semantic-ia-complete-symbol-menu)
+  (local-set-key "\C-cb" 'semantic-mrub-switch-tags)
+  (local-set-key "\C-cR" 'semantic-symref)
+  (local-set-key "\C-cj" 'semantic-ia-fast-jump)
+  (local-set-key "\C-cp" 'semantic-ia-show-summary)
+  (local-set-key "\C-cl" 'semantic-ia-show-doc)
+  (local-set-key "\C-cr" 'semantic-symref-symbol)
+  (local-set-key "\C-c/" 'semantic-ia-complete-symbol)
+  (local-set-key [(control return)] 'semantic-ia-complete-symbol)
+  (local-set-key "." 'semantic-complete-self-insert)
+  (local-set-key ">" 'semantic-complete-self-insert)
+  ;; Indent or complete 
+  ;; don't use tab
+  ;; (local-set-key  [(tab)] 'indent-or-complete)
+  )
+(add-hook 'c-mode-common-hook 'yyc/c-mode-keys)
+;; Meta+shift+F12 跳到函数声明
+(define-key semantic-mode-map [M-S-f12] 'semantic-analyze-proto-impl-toggle)
+;; 补全 alt+n 
+;(define-key semantic-mode-map (kbd "M-n") 'semantic-ia-complete-symbol-menu)
+;; 可视化书签F2 
+;; 在当前行设置或取消书签
+;; C-F2 查找下一个书签
+;; S-F2 查找上一个书签
+;; C-S-F2 清空当前文件的所有书签
+(require 'bm)
+(global-set-key (kbd "<C-f2>") 'bm-toggle)
+(global-set-key (kbd "<f2>")   'bm-next)
+(global-set-key (kbd "<S-f2>") 'bm-previous)
+;; h/cpp切换
+(require 'sourcepair)
+(define-key global-map "\C-xz" 'sourcepair-load)
+(setq sourcepair-source-path '( "." "../*"))
+(setq sourcepair-header-path '( "." "include" "../*"))
+(setq sourcepair-recures-ignore '( "CVS" "Obj" "Debug" "Release"))
+
+

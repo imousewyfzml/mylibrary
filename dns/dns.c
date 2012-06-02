@@ -56,6 +56,7 @@ int main(int argc, char** argv)
     printf("Server waiting...\n");
 
     sSocket = socket_init();
+ 
     if (sSocket== -1)
     {
         return -1;
@@ -251,9 +252,6 @@ int process_std_query(const char *recv_buf, const unsigned int len, char *send_b
         return -1;
     }
 
-    if (!plen)
-        return -1;
-    *(plen) = 0;
 
     /* 复制请求信息 */
     memcpy(send_buf, recv_buf, len);

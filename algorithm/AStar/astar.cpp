@@ -3,7 +3,8 @@
 
 using namespace std;
 
-typedef vector<Node *> QNodes
+class Node;
+typedef vector<Node *> QNodes;
 // 坐标
 class Location
 {
@@ -14,7 +15,7 @@ class Location
             _y = y;
         }
 
-        bool operator = (const Location &sLocation)
+        bool operator == (const Location &sLocation)
         {
             if (sLocation._x == _x && sLocation._y == _y)
                 return 1;
@@ -31,12 +32,9 @@ class Location
 class Node
 {
     public:
-        Node(const Location &L, int mCost, int lid, const Node *parent = NULL)
+        Node(const Location &L, int mCost, int lid, Node *parent = NULL)
+            :_loc(L),_mCost(mCost),_lid(lid),_parent(parent)
         {
-            _loc = L;
-            _mCost = mCost;
-            _lid = lid;
-            _parent = parent;
             _sorce = 0;
         }
 
@@ -60,7 +58,10 @@ class Node
 class MapHandler
 {
     public:
-        MapHander(const vector<int> vmapdata, int w, int h)
+        MapHandler()
+        {
+        }
+        MapHandler(const vector<int> vmapdata, int w, int h)
         {
             _mapdata = vmapdata;
             w = _width;
@@ -77,7 +78,7 @@ class MapHandler
             if (x<0 || x>=_width || y<0 || y>=_high)
                 return NULL;
             cost = _mapdata[y*_width+x];
-            if cost == -1:
+            if (cost == -1)
                 return NULL;
 
             return new Node(L, cost, (y*_width+x));
@@ -88,21 +89,21 @@ class MapHandler
         {
             QNodes result;
 
-            Location cl = cur_node->loc;
+            Location cl = cur_node->_loc;
             Location dl = dst;
 
             Node * pn = NULL;
             
-            pn = _handle_node(cl._x+1, cl._y, cur_node, dst._x, dst._y)
+            pn = _handle_node(cl._x+1, cl._y, cur_node, dl._x, dl._y);
             if (pn != NULL)
                 result.push_back(pn);
-            pn = _handle_node(cl._x-1, cl._y, cur_node, dst._x, dst._y)
+            pn = _handle_node(cl._x-1, cl._y, cur_node, dl._x, dl._y);
             if (pn != NULL)
                 result.push_back(pn);
-            pn = _handle_node(cl._x, cl._y+1, cur_node, dst._x, dst._y)
+            pn = _handle_node(cl._x, cl._y+1, cur_node, dl._x, dl._y);
             if (pn != NULL)
                 result.push_back(pn);
-            pn = _handle_node(cl._x, cl._y-1, cur_node, dst._x, dst._y)
+            pn = _handle_node(cl._x, cl._y-1, cur_node, dl._x, dl._y);
             if (pn != NULL)
                 result.push_back(pn);
 
@@ -124,8 +125,9 @@ class MapHandler
                 emCost = dx+dy;
                 pn->_mCost += cur_node->_mCost;
                 pn->_sorce += pn->_mCost + emCost;
-                pn->_parent = cur_node;
+                pn->_parent = (Node *)cur_node;
             }
+            return pn;
         }
         
 
@@ -138,11 +140,12 @@ class MapHandler
 // 最终路径结果
 class Path
 {
-    Path(const QNodes nodes, int total_cost)
-    {
-        _result = nodes;
-        _total_cost = total_cost;
-    }
+    public:
+        Path(const QNodes nodes, int total_cost)
+        {
+            _result = nodes;
+            _total_cost = total_cost;
+        }
 
     public:
         QNodes _result;
@@ -170,7 +173,7 @@ class AStar
 
             // 放入 open set中
             _open_nodes.push_back(fnode);
-            _open_set.push_back(fnode->lid);
+            _open_set.push_back(fnode->_lid);
             
             // 起始node
             next_node = fnode;
@@ -184,13 +187,22 @@ class AStar
 
         }
     private:
+        // 返回查找路径
+        Path _trace_node(const Node *finish_node)
+        {
+            QNodes result;
+            int total_cost;
+            
+            // TODO: 查找路径
+            return Path(result, total_cost);
+        }
         // 获取权重值最小的
         Node * _get_best_open_node()
         {
             Node * best_node = NULL;
-            QNodes::iterator it = _open_set.begin()
+            QNodes::iterator it = _open_nodes.begin();
 
-            for (; it != _open_set.end(); ++it)
+            for (; it != _open_nodes.end(); ++it)
             {
                 if (best_node == NULL)
                 {
@@ -208,13 +220,15 @@ class AStar
             return best_node;
         }
 
+        // 对周围的节点进行处理
         Node * _handle_node(const Node *cur_node, const Location &end)
         {
             QNodes neighbor_nodes;
             // 从open set中取出一个节点开始计算
-            int idx = _node_idx(cur_node->_lid, _open_nodes);
-            // TODO: 将 open set中的当前节点pop掉
-            //
+            int idx = _node_idx(cur_node, _open_nodes);
+            // 将 open set中的当前节点pop掉
+            _discard_nodes.push_back(_open_nodes[idx]);
+            _open_nodes.erase(_open_nodes.begin() + idx);
             // 添加到close_set中
             _close_set.push_back(cur_node->_lid);
 
@@ -225,19 +239,23 @@ class AStar
             {
                 if ((*it)->_loc == end)
                     return (*it);
-                else if (_check_in_set((*it)->lid, _close_set) != 0)
+                else if (_check_in_set((*it)->_lid, _close_set) != 0)
                     // 在close set中的，不必关心
                     continue;
-                else if (_check_in_set((*it)->lid, _open_set) != 0)
+                else if (_check_in_set((*it)->_lid, _open_set) != 0)
                 {
                     // 已经在Open中了，那么比较一下
-                    idx = _node_idx((*it)->lid, _open_nodes);
+                    idx = _node_idx((*it), _open_nodes);
                     Node * on = _open_nodes[idx];
-                    if ((*it)->_mCost < on._mCost)
+                    if ((*it)->_mCost < on->_mCost)
                     {
-                        // TODO 将on从open中pop掉
+                        // 将on从open中pop掉
                         // 删除在open_set中的集合
+                        _discard_nodes.push_back(on);
+                        _open_nodes.erase(_open_nodes.begin() + idx);
                         // 将it加入到open集合中
+                        _open_nodes.push_back((*it));
+                        _open_set.push_back((*it)->_lid);
                     }
 
                 }
@@ -247,15 +265,17 @@ class AStar
                     _open_set.push_back((*it)->_lid);
                 }
 
-            }
+            } //for 
+
+            return NULL;
             
         }
         
         int _node_idx(const Node *cur_code, QNodes &set)
         {
-            for (int i=0; i<_open_set.size(); i++)
+            for (int i=0; i<(int)_open_set.size(); i++)
             {
-                if (set[i]->lid == cur_code->_lid)
+                if (set[i]->_lid == cur_code->_lid)
                     return i;
             }
             return -1;
@@ -276,4 +296,13 @@ class AStar
         vector<int> _close_set; // close set
         QNodes _open_nodes; // open中的节点实例
         
+        // 排除掉的节点
+        QNodes _discard_nodes;
+        
 };
+
+
+int main(int argc, char **argv)
+{
+    return 0;
+}

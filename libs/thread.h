@@ -6,6 +6,9 @@
  * @date 2013-12-23
  */
 
+#ifndef KOALA_THREAD
+#define KOALA_THREAD
+
 #include <pthread.h>
 #include <string>
 #include "mutex.h"
@@ -39,3 +42,5 @@ private:
 
 
 };
+
+#endif

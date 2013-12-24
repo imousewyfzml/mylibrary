@@ -6,11 +6,15 @@
  * @date 2013-12-23
  */
 
+#ifndef KOALA_MUTEX
+#define KOALA_MUTEX
 
 #include <pthread.h>
 
 namespace koala
 {
+
+class condition;
 
 class mutex
 {
@@ -34,8 +38,27 @@ public:
 private:
     int init();
 
-    pthread_mutex_t _mutex;
+    // not copyable
+    mutex(mutex &);
+    mutex & operator=(mutex &);
+
+    // In condition
+    // we access _mutex for wait;
+    friend class condition;
+
+    typedef struct lockstate
+    {
+        pthread_mutex_t *state;
+    }lockstate;
+
+
+    inline void unlock(lockstate &state) const;
+    inline void lock(lockstate &state) const;
+
+    mutable pthread_mutex_t _mutex;
 };
 
 
-};
+}; // namespace koala
+
+#endif

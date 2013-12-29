@@ -11,7 +11,8 @@
 namespace koala
 {
 
-condition::condition()
+condition::condition(mutex *mu)
+    : _mu(mu)
 {
     int rc = pthread_cond_init(&_cond, NULL);
     if (rc != 0)
@@ -29,13 +30,9 @@ condition::~condition()
     }
 }
 
-int condition::wait(const mutex &m)
+int condition::wait()
 {
-    lockstate lt;
-
-    m.unlock(lt);
-    int rc = pthread_cond_wait(&_cond, lt.state);
-    m.lock(lt);
+    int rc = pthread_cond_wait(&_cond, &_mu->_mutex);
     if (rc != 0)
     {
         return rc;

@@ -67,16 +67,6 @@ mutex::auto_lock::~auto_lock()
     _mutex.unlock();
 }
 
-void mutex::unlock(lockstate &st) const
-{
-    st.state = &_mutex;
-}
-
-void mutex::lock(lockstate &st) const
-{
-
-}
-
 // no copyable
 mutex::mutex(mutex &)
 {

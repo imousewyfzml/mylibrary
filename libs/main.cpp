@@ -47,9 +47,12 @@ public:
 
     T get()
     {
+        koala::mutex::auto_lock lk(_mutex);
         if (_list.empty())
         {
-            _cond.wait(_mutex);
+            cerr << "befort wait .." << endl;
+            _cond.wait();
+            cerr << "after wait .." << endl;
         }
 
         T tmp = _list.front();
@@ -57,10 +60,16 @@ public:
         return tmp;
     }
 
+    test_thread()
+        : _cond(&_mutex)
+    {
+
+    }
+
 private:
     list<T> _list;
-    koala::condition _cond;
     koala::mutex _mutex;
+    koala::condition _cond;
 };
 
 
@@ -68,7 +77,9 @@ int main()
 {
     test_thread<int> th;
     th.run();
+    cerr << "before 3 second" << endl;
     sleep(3);
+    cerr << "after 3 second" << endl;
     th.put(1);
     sleep(2);
     th.put(2);

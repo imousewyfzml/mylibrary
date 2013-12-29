@@ -46,16 +46,7 @@ private:
     // we access _mutex for wait;
     friend class condition;
 
-    typedef struct lockstate
-    {
-        pthread_mutex_t *state;
-    }lockstate;
-
-
-    inline void unlock(lockstate &state) const;
-    inline void lock(lockstate &state) const;
-
-    mutable pthread_mutex_t _mutex;
+    pthread_mutex_t _mutex;
 };
 
 

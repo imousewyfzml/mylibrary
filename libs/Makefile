@@ -1,4 +1,5 @@
 LDFLAG = -lpthread
+CXXFLAG = -g
 SRC = main.cpp \
 	  thread.cpp \
 	  mutex.cpp \
@@ -6,7 +7,7 @@ SRC = main.cpp \
 MODULE = test_thread
 
 all:
-	g++ $(SRC) -o $(MODULE) $(LDFLAG)
+	g++ $(SRC) -o $(MODULE) $(LDFLAG) $(CXXFLAG)
 
 clean:
 	rm -f ${MODULE}

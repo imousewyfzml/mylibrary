@@ -17,18 +17,18 @@ namespace koala
 
 class condition
 {
-    typedef mutex::lockstate lockstate;
 public:
-    condition();
+    condition(mutex *m);
     ~condition();
 
-    int wait(const mutex &m);
+    int wait();
     // int timed_wait();
     int signal();
     int broadcast();
 
 private:
     pthread_cond_t _cond;
+    mutex* _mu;
 };
 
 };

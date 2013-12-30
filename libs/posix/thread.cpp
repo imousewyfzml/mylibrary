@@ -26,20 +26,19 @@ extern "C" {
             }
         }
         pth->_done();
+
+        return pth;
     }
 }
 
 thread::thread()
-    : _id(-1),
-      _runing(false)
+    : _id(-1),_runing(false)
 {
 
 }
 
 thread::thread(const std::string &name)
-    : _id(-1),
-      _runing(false),
-      _name(name)
+    : _id(-1), _runing(false), _name(name)
 {
 
 }

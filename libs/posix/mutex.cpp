@@ -75,6 +75,6 @@ mutex::mutex(mutex &)
 
 mutex & mutex::operator=(mutex &)
 {
-
+    return *this;
 }
 };

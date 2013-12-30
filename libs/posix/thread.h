@@ -33,13 +33,10 @@ public:
     inline void _done();
 private:
     pthread_t _id;
-    std::string _name;
-
     bool _runing;
-
+    std::string _name;
     koala::mutex _mutex;
 };
-
 
 };
 

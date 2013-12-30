@@ -36,6 +36,8 @@ public:
         {
             cerr << get() << endl;
         }
+
+        return 0;
     }
 
     void put(T item)

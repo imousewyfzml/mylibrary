@@ -1,7 +1,3 @@
-top_dir = ../
-
-CXX = g++
-LDFLAGS = -lpthread
 
 # $(call mksoname, soname, version)
 mksoname    = $(if $(2),lib$(1).so.$(2),lib$(1).so)

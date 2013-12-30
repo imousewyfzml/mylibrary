@@ -1,13 +1,16 @@
-LDFLAG = -lpthread
-CXXFLAG = -g
-SRC = main.cpp \
-	  thread.cpp \
-	  mutex.cpp \
-	  condition.cpp 
-MODULE = test_thread
+#
+#
+TOP_DIR = .
 
-all:
-	g++ $(SRC) -o $(MODULE) $(LDFLAG) $(CXXFLAG)
+SUBDIRS = posix
 
-clean:
-	rm -f ${MODULE}
+include $(TOP_DIR)/build/rules.mk
+
+# make all
+$(EVERYTHING)::
+	@for subdir in $(SUBDIRS); \
+		do \
+		echo "making $@ in $$subdir"; \
+		( cd $$subdir && $(MAKE) $@ ) || exit 1; \
+	done
+

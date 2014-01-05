@@ -4,7 +4,9 @@ TOP_DIR = ../
 
 include $(TOP_DIR)/build/define.mk
 
-POSIX_SONAME = $(call mksoname, posix)
+VERSION = 0.1
+
+POSIX_SONAME = $(call mksoname,posix,$(VERSION))
 
 TEST = test_thread
 
@@ -12,21 +14,21 @@ OBJS = \
 	   thread.o \
 	   condition.o \
 	   mutex.o \
-	   main.o
 
 SRCS = $(OBJS:.o=.cpp)
 
-TARGETS = $(TEST)
-#$(POSIX_SONMAE)
+TARGETS = $(POSIX_SONAME)
 
 include $(TOP_DIR)/build/rules.mk
 
-CPPFLAGS := -I. $(CPPFLAGS)
+CPPFLAGS := -I. -fPIC $(CPPFLAGS)
 
-$(POSIX_SONMAE): $(OBJS)
+$(POSIX_SONAME): $(OBJS)
 	rm -rf $@
-	$(call mkshlib, $@, $(POSIX_SONMAE), $(OBJS))
+	$(call mkshlib,$@,$(POSIX_SONAME),$(OBJS))
 
-$(TEST): $(OBJS)
-	rm -rf $@
-	$(CXX) $(LDFLAGS) $(OBJS) -o $@ $(CXXFLAGS) $(CPPFLAGS)
+#mkshlib      = $(CXX) -shared $(LDFLAGS) -o $(1) -Wl,-h,$(2) $(3) $(4) -lpthread -lrt
+
+#$(TEST): $(TEST_OBJS)
+#	rm -rf $@
+#	$(CXX) $(LDFLAGS) $(TEST_OBJS) -o $@ $(CXXFLAGS) $(CPPFLAGS)

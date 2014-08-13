@@ -1,0 +1,13 @@
+
+AMR全称Adaptive Multi-Rate和Adaptive Multi-Rate Wideband，主要用于移动设备的音频，压缩比比较大，但相对其他的压缩格式质量比较差，由于多用于人声，通话，效果还是很不错的。
+
+Amr有以下一些编码方式：
+Mode 0 - AMR 4.75 - Encodes at 4.75kbit/s
+Mode 1 - AMR 5.15 - Encodes at 5.15kbit/s
+Mode 2 - AMR 5.9 - Encodes at 5.9kbit/s
+Mode 3 - AMR 6.7 - Encodes at 6.7kbit/s
+Mode 4 - AMR 7.4 - Encodes at 7.4kbit/s
+Mode 5 - AMR 7.95 - Encodes at 7.95kbit/s
+Mode 6 - AMR 10.2 - Encodes at 10.2kbit/s
+Mode 7 - AMR 12.2 - Encodes at 12.2kbit/s
+8~15位一些 noise frames 和保留位的定义。
